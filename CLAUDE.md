@@ -7,6 +7,19 @@
 - `tools/`：所有工具放这里。形式一般是命令行脚本，或单页、无外部依赖的 HTML 工具（不引用 CDN/外部库）。
 - `input/`：各种输入数据。已加入 `.gitignore`，不提交。
 - `output/`：工具输出。已加入 `.gitignore`，不提交。
+- 根目录 `index.html`：工具列表主页。
+
+## 新增工具必须注册到主页
+
+每个新工具放在 `tools/<工具名>/` 下，里面包含需求 markdown 和工具本身。完成后**必须**在根目录 `index.html` 的 `TOOLS` 数组中追加一项：
+
+- `name`：工具名称
+- `href`：工具页面的相对路径，例如 `tools/<工具名>/index.html`
+- `desc`：一句话说明
+- `color`：图标主色
+- `icon`：能体现工具用途的内联 SVG，`stroke` 用 `currentColor`，不引用外部资源
+
+命令行工具也要注册，`href` 指向它的 README 或需求文档。
 
 ## 注意
 

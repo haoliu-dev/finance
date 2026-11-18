@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>财务小工具</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#6b7280; --line:#e5e7eb; --accent:#2563eb; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#111418; --card:#1a1f26; --text:#e5e7eb; --muted:#9ca3af; --line:#2d333b; --accent:#60a5fa; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text);
+    font:15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", sans-serif; }
+  .wrap { max-width:960px; margin:0 auto; padding:40px 24px; }
+  h1 { margin:0; font-size:26px; }
+  .sub { color:var(--muted); margin:6px 0 28px; font-size:13px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:16px; }
+  a.card { display:flex; gap:14px; align-items:flex-start; padding:18px; background:var(--card);
+    border:1px solid var(--line); border-radius:12px; color:inherit; text-decoration:none;
+    transition:transform .12s, border-color .12s, box-shadow .12s; }
+  a.card:hover, a.card:focus-visible { transform:translateY(-2px); border-color:var(--accent);
+    box-shadow:0 6px 18px rgba(0,0,0,.08); outline:none; }
+  .icon { flex:none; width:52px; height:52px; border-radius:12px; display:grid; place-items:center; }
+  .icon svg { width:30px; height:30px; }
+  .name { font-weight:650; font-size:16px; }
+  .desc { color:var(--muted); font-size:13px; margin-top:3px; }
+  footer { color:var(--muted); font-size:11px; margin-top:32px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>财务小工具</h1>
+  <p class="sub">本地单页工具，数据只在本机浏览器中处理。点击卡片打开。</p>
+  <div class="grid" id="grid"></div>
+  <footer>仅供个人规划参考，不构成税务或投资建议。</footer>
+</div>
+
+<script>
+// ============ 工具注册表：新增工具时在此追加一项 ============
+// href: 相对本页的路径；icon: 内联 SVG（stroke 用 currentColor）；color: 图标主色
+const TOOLS = [
+  {
+    name: '2026 加州居民税务估算',
+    href: 'tools/2026-tax-estimator/index.html',
+    desc: '实时估算 2026 联邦 + 加州税、边际税率与档位余量，规划年末捐赠和卖股。',
+    color: '#2563eb',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="2.5" width="16" height="19" rx="2.5"/>
+      <rect x="7" y="5.5" width="10" height="4" rx="1"/>
+      <path d="M8 13h.01M12 13h.01M16 13h.01M8 16.5h.01M12 16.5h.01M8 20h.01M12 20h.01"/>
+      <path d="M16 16.5v3.5"/>
+    </svg>`,
+  },
+];
+
+document.getElementById('grid').innerHTML = TOOLS.map(t => `
+  <a class="card" href="${t.href}">
+    <div class="icon" style="color:${t.color}; background:${t.color}1a">${t.icon}</div>
+    <div><div class="name">${t.name}</div><div class="desc">${t.desc}</div></div>
+  </a>`).join('');
+</script>
+</body>
+</html>
