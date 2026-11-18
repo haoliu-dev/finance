@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2026 加州居民税务快速估算</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #fff; --text: #1d2330; --muted: #6b7280; --line: #e5e7eb;
+    --accent: #2563eb; --fed: #1d4ed8; --ca: #b45309; --warn-bg: #fff7ed; --warn: #9a3412;
+    --ok-bg: #f0fdf4; --ok: #166534; --bad: #dc2626;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#111418; --card:#1a1f26; --text:#e5e7eb; --muted:#9ca3af; --line:#2d333b;
+      --accent:#60a5fa; --fed:#93c5fd; --ca:#fbbf24; --warn-bg:#2a1d12; --warn:#fdba74; --ok-bg:#12251a; --ok:#86efac; --bad:#f87171; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", sans-serif; }
+  header { padding: 16px 24px 4px; }
+  header h1 { margin:0; font-size:20px; }
+  header p { margin:4px 0 0; color:var(--muted); font-size:12px; }
+  main { display:grid; grid-template-columns: 360px 1fr; gap:16px; padding:16px 24px 32px; align-items:start; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  .card h2 { font-size:14px; margin:0 0 10px; }
+  .inputs { position: sticky; top: 12px; }
+  label.f { display:block; margin-bottom:10px; }
+  label.f span { display:block; font-size:12px; color:var(--muted); margin-bottom:3px; }
+  label.f span b { color:var(--text); font-weight:600; }
+  input[type=text], select { width:100%; padding:7px 9px; border:1px solid var(--line); border-radius:6px;
+    background:var(--bg); color:var(--text); font-size:14px; font-variant-numeric: tabular-nums; }
+  input[type=text]:focus, select:focus { outline:2px solid var(--accent); outline-offset:-1px; }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  details { margin-top:6px; border-top:1px dashed var(--line); padding-top:8px; }
+  summary { cursor:pointer; font-size:13px; color:var(--accent); margin-bottom:8px; }
+  .hint { font-size:11px; color:var(--muted); margin-top:2px; }
+  .hint.lim b { font-variant-numeric: tabular-nums; }
+  .hint.lim.over { color:var(--bad); }
+  input.over { border-color:var(--bad); color:var(--bad); }
+  .btns { display:flex; gap:8px; margin-top:8px; }
+  button { border:1px solid var(--line); background:var(--bg); color:var(--text); border-radius:6px; padding:5px 10px; cursor:pointer; font-size:12px; }
+  button:hover { border-color: var(--accent); }
+  .kpis { display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:16px; }
+  @media (max-width: 1200px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+  .kpi .lbl { font-size:12px; color:var(--muted); }
+  .kpi .val { font-size:24px; font-weight:650; font-variant-numeric: tabular-nums; margin:2px 0; }
+  .kpi .sub { font-size:12px; color:var(--muted); font-variant-numeric: tabular-nums; }
+  .kpi.fed .val { color:var(--fed); } .kpi.ca .val { color:var(--ca); }
+  .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px; }
+  @media (max-width: 1200px) { .grid2 { grid-template-columns: 1fr; } }
+  table { width:100%; border-collapse:collapse; font-variant-numeric: tabular-nums; }
+  td, th { padding:4px 6px; border-bottom:1px solid var(--line); text-align:right; font-size:13px; }
+  td:first-child, th:first-child { text-align:left; }
+  th { color:var(--muted); font-weight:500; font-size:12px; }
+  tr.total td { font-weight:650; border-top:2px solid var(--line); }
+  tr.sub td { color:var(--muted); font-size:12px; }
+  td.dim { color:var(--muted); }
+  .notes { margin:0; padding-left:18px; }
+  .notes li { margin:4px 0; }
+  .msg { padding:7px 10px; border-radius:6px; margin:6px 0; font-size:13px; }
+  .msg.warn { background:var(--warn-bg); color:var(--warn); }
+  .msg.ok { background:var(--ok-bg); color:var(--ok); }
+  .mt { margin-top:16px; }
+  footer { color:var(--muted); font-size:11px; padding: 0 24px 24px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>2026 加州居民税务快速估算</h1>
+  <p>联邦 + 加州，2026 税年（含 OBBBA 新规）。粗略估算，用于年末捐赠与卖股规划，不构成税务建议。金额可输入 <code>250k</code>、<code>1.2m</code>、<code>30w</code>（万）或带逗号。</p>
+</header>
+
+<main>
+  <section class="card inputs">
+    <h2>输入</h2>
+    <label class="f"><span><b>报税身份</b> Filing status</span>
+      <select id="fs">
+        <option value="mfj" selected>Married Filing Jointly（夫妻合并）</option>
+        <option value="single">Single（单身）</option>
+        <option value="mfs">Married Filing Separately（夫妻分开）</option>
+        <option value="hoh">Head of Household（户主）</option>
+      </select>
+    </label>
+    <label class="f"><span><b>Ordinary income</b> 普通收入（W-2 Box 1、利息、非合格股息等）</span>
+      <input type="text" id="ord" placeholder="例如 450k"></label>
+    <label class="f"><span><b>Long-term capital gain</b> 长期资本利得（亏损填负数）</span>
+      <input type="text" id="lt" placeholder="例如 80k 或 -20k"></label>
+    <div class="row2">
+      <label class="f"><span><b>现金捐赠</b>（含 DAF）</span><input type="text" id="cash" placeholder="0"><div class="hint lim" id="cashLim"></div></label>
+      <label class="f"><span><b>增值股票捐赠</b>（市值）</span><input type="text" id="stock" placeholder="0"><div class="hint lim" id="stockLim"></div></label>
+    </div>
+
+    <details id="adv">
+      <summary>高级 / 可选输入</summary>
+      <label class="f"><span>短期资本利得 Short-term gain（±）</span><input type="text" id="st" placeholder="0"></label>
+      <label class="f"><span>合格股息 Qualified dividends（不含在普通收入中）</span><input type="text" id="qd" placeholder="0"></label>
+      <label class="f"><span>其他投资收入（已含在普通收入中的利息、非合格股息、租金等，用于 NIIT）</span><input type="text" id="nii" placeholder="0"></label>
+      <div class="row2">
+        <label class="f"><span>W-2 工资（本人）</span><input type="text" id="w1" placeholder="默认=普通收入"></label>
+        <label class="f" id="w2wrap"><span>W-2 工资（配偶）</span><input type="text" id="w2" placeholder="0"></label>
+      </div>
+      <div class="hint" style="margin:-6px 0 10px">都留空时，普通收入全部视为本人工资。工资用于计算 SS（按人封顶）、Medicare、加州 SDI。</div>
+      <div class="row2">
+        <label class="f"><span>房产税 Property tax</span><input type="text" id="prop" placeholder="0"></label>
+        <label class="f"><span>可扣房贷利息</span><input type="text" id="mort" placeholder="0"></label>
+      </div>
+      <div class="row2">
+        <label class="f"><span>17 岁以下子女数</span><input type="text" id="kids" placeholder="0"></label>
+        <label class="f"><span>ISO 行权价差（AMT）</span><input type="text" id="iso" placeholder="0"></label>
+      </div>
+      <label class="f"><span>所捐股票的成本基础（用于“卖出再捐”对比）</span><input type="text" id="basis" placeholder="0"></label>
+      <div class="row2">
+        <label class="f"><span>联邦已预扣/预缴（所得税）</span><input type="text" id="fedPaid" placeholder="0"></label>
+        <label class="f"><span>加州已预扣/预缴</span><input type="text" id="caPaid" placeholder="0"></label>
+      </div>
+    </details>
+    <div class="btns">
+      <button id="example">填入示例</button>
+      <button id="clear">清空</button>
+    </div>
+    <div class="hint" style="margin-top:8px">输入仅保存在本浏览器（localStorage），不会上传。</div>
+  </section>
+
+  <section>
+    <div class="kpis">
+      <div class="card kpi fed"><div class="lbl">联邦合计（所得税 + FICA + NIIT + AMT）</div><div class="val" id="kFed">—</div><div class="sub" id="kFedM"></div></div>
+      <div class="card kpi ca"><div class="lbl">加州合计（所得税 + MHST + AMT + SDI）</div><div class="val" id="kCa">—</div><div class="sub" id="kCaM"></div></div>
+      <div class="card kpi"><div class="lbl">总税</div><div class="val" id="kTot">—</div><div class="sub" id="kTotM"></div></div>
+      <div class="card kpi"><div class="lbl">实际税率（总税 / 总收入）</div><div class="val" id="kEff">—</div><div class="sub" id="kEffS"></div></div>
+    </div>
+
+    <div class="card">
+      <h2>边际税率（每多 $1,000 的税额变化，含所有 phase-out 影响）</h2>
+      <table id="tMarg"></table>
+      <div class="hint">数值差分计算：在当前输入上 +$1,000 后重新计算整份税。捐赠一行为负值表示省税。</div>
+    </div>
+
+    <div class="grid2 mt">
+      <div class="card"><h2>联邦明细</h2><table id="tFed"></table></div>
+      <div class="card"><h2>加州明细</h2><table id="tCa"></table></div>
+    </div>
+
+    <div class="card">
+      <h2>档位余量（年末还能多卖/多挣多少才跳档）</h2>
+      <table id="tHead"></table>
+    </div>
+
+    <div class="card mt">
+      <h2>捐赠分析与提示</h2>
+      <div id="msgs"></div>
+    </div>
+
+    <div class="card mt">
+      <h2>简化假设</h2>
+      <ul class="notes">
+        <li>普通收入视为已扣除 401(k)/HSA 等税前项后的金额；不含自雇税、QBI、其他抵免。</li>
+        <li>联邦 SALT 中的州所得税近似取本年加州税 + SDI 估算值（实际按当年实际缴纳）。</li>
+        <li>捐赠按 public charity / DAF 计：联邦现金 60% / 股票 30% AGI 上限，加州现金 50% / 股票 30%；超出部分可结转 5 年。</li>
+        <li>联邦 AMT、加州 AMT 均为粗略算法（加回 SALT/房产税、标准扣除、ISO 价差）。</li>
+        <li>参数来源：IRS Rev. Proc. 2025-32、OBBBA、FTB 2026 指数化备忘录（2026-09-03）、EDD 2026 SDI 1.3%。详见同目录 requirements.md。</li>
+      </ul>
+    </div>
+  </section>
+</main>
+<footer>仅供个人规划参考，不构成税务或投资建议；重大决策请咨询持牌税务顾问。</footer>
+
+<script id="engine">
+// ===================== 2026 tax parameters =====================
+const INF = Infinity;
+const FED = {
+  brackets: {
+    mfj:    [[24800,.10],[100800,.12],[211400,.22],[403550,.24],[512450,.32],[768700,.35],[INF,.37]],
+    single: [[12400,.10],[50400,.12],[105700,.22],[201775,.24],[256225,.32],[640600,.35],[INF,.37]],
+    mfs:    [[12400,.10],[50400,.12],[105700,.22],[201775,.24],[256225,.32],[384350,.35],[INF,.37]],
+    hoh:    [[17700,.10],[67450,.12],[105700,.22],[201775,.24],[256225,.32],[640600,.35],[INF,.37]],
+  },
+  std: { mfj:32200, single:16100, mfs:16100, hoh:24150 },
+  cg:  { mfj:[98900,613700], single:[49450,545500], mfs:[49450,306850], hoh:[66200,579600] },
+  surtaxThr: { mfj:250000, single:200000, mfs:125000, hoh:200000 }, // NIIT & Add'l Medicare
+  ssBase: 184500, ssRate: .062, medRate: .0145, addlMedRate: .009, niitRate: .038,
+  saltCap: { mfj:40400, single:40400, hoh:40400, mfs:20200 },
+  saltPhase: { mfj:505000, single:505000, hoh:505000, mfs:252500 },
+  saltFloor: { mfj:10000, single:10000, hoh:10000, mfs:5000 },
+  nonItemCharity: { mfj:2000, single:1000, hoh:1000, mfs:1000 },
+  charityFloorPct: .005, cashLimit: .60, stockLimit: .30,
+  capLossLimit: { mfj:3000, single:3000, hoh:3000, mfs:1500 },
+  amtEx: { mfj:140200, single:90100, hoh:90100, mfs:70100 },
+  amtPhase: { mfj:1000000, single:500000, hoh:500000, mfs:500000 }, amtPhaseRate: .5,
+  amt28: { mfj:244500, single:244500, hoh:244500, mfs:122250 },
+  ctc: 2200, ctcPhase: { mfj:400000, single:200000, hoh:200000, mfs:200000 },
+};
+const CA = {
+  brackets: {
+    single: [[11456,.01],[27157,.02],[42861,.04],[59498,.06],[75197,.08],[384109,.093],[460927,.103],[768213,.113],[INF,.123]],
+    mfj:    [[22912,.01],[54314,.02],[85722,.04],[118996,.06],[150394,.08],[768218,.093],[921854,.103],[1536426,.113],[INF,.123]],
+    hoh:    [[22927,.01],[54316,.02],[70018,.04],[86654,.06],[102356,.08],[522385,.093],[626864,.103],[1044771,.113],[INF,.123]],
+  },
+  std: { mfj:11800, single:5900, mfs:5900, hoh:11800 },
+  personalCredit: 158, dependentCredit: 491,
+  phaseThr: { mfj:521561, single:260778, mfs:260778, hoh:391173 }, // exemption credit & itemized reduction
+  mhstThr: 1000000, mhstRate: .01,
+  cashLimit: .50, stockLimit: .30,
+  amtEx: { mfj:127872, single:95902, hoh:95902, mfs:63932 },
+  amtPhase: { mfj:479512, single:359633, hoh:359633, mfs:239752 }, amtRate: .07,
+  sdiRate: .013,
+};
+CA.brackets.mfs = CA.brackets.single;
+
+// ===================== helpers =====================
+function bracketTax(income, br) {
+  let tax = 0, lo = 0;
+  for (const [hi, r] of br) {
+    if (income <= lo) break;
+    tax += (Math.min(income, hi) - lo) * r;
+    lo = hi;
+  }
+  return tax;
+}
+function bracketRate(income, br) {
+  let lo = 0;
+  for (const [hi, r] of br) { if (income < hi) return { rate: r, lo, hi }; lo = hi; }
+}
+// Preferential (LTCG/QD) tax stacked on top of ordinary taxable income
+function cgTax(ordTI, pref, t0, t15) {
+  const top = ordTI + pref;
+  const in0 = Math.max(0, Math.min(top, t0) - ordTI);
+  const in15 = Math.max(0, Math.min(top, t15) - Math.max(ordTI, t0));
+  const in20 = pref - in0 - in15;
+  return in15 * .15 + in20 * .20;
+}
+const pos = x => Math.max(0, x);
+
+// ===================== engine =====================
+function calc(inp) {
+  const fs = inp.fs;
+  const ord = inp.ord || 0, lt = inp.lt || 0, st = inp.st || 0, qd = pos(inp.qd || 0);
+  const cash = pos(inp.cash || 0), stock = pos(inp.stock || 0);
+  const prop = pos(inp.prop || 0), mort = pos(inp.mort || 0), iso = pos(inp.iso || 0);
+  const kids = Math.max(0, Math.floor(inp.kids || 0));
+  let w1 = inp.w1, w2 = fs === 'mfj' ? inp.w2 : null;
+  if (w1 == null && w2 == null) { w1 = pos(ord); w2 = 0; }
+  w1 = pos(w1 || 0); w2 = pos(w2 || 0);
+  const wages = w1 + w2;
+
+  // ---- capital gain netting ----
+  const net = st + lt;
+  let capInAGI, netCapGain, capCarry = 0;
+  if (net < 0) { capInAGI = Math.max(net, -FED.capLossLimit[fs]); capCarry = net - capInAGI; netCapGain = 0; }
+  else { capInAGI = net; netCapGain = pos(Math.min(lt, net)); }
+  const agi = ord + capInAGI + qd;
+
+  // ================= California =================
+  const c = {};
+  c.agi = agi;
+  c.charStock = Math.min(stock, CA.stockLimit * pos(agi));
+  c.charCash = Math.min(cash, pos(CA.cashLimit * pos(agi) - c.charStock));
+  c.charity = c.charStock + c.charCash;
+  c.charCarry = cash + stock - c.charity;
+  c.itemPre = prop + mort + c.charity;
+  c.itemRed = Math.min(.06 * pos(agi - CA.phaseThr[fs]), .8 * c.itemPre);
+  c.item = c.itemPre - c.itemRed;
+  c.std = CA.std[fs];
+  c.itemizing = c.item > c.std;
+  c.ded = Math.max(c.std, c.item);
+  c.ti = pos(agi - c.ded);
+  c.regTax = bracketTax(c.ti, CA.brackets[fs]);
+  // exemption credits
+  const steps = Math.ceil(pos(agi - CA.phaseThr[fs]) / (fs === 'mfs' ? 1250 : 2500));
+  const credList = [];
+  for (let i = 0; i < (fs === 'mfj' ? 2 : 1); i++) credList.push(CA.personalCredit);
+  for (let i = 0; i < kids; i++) credList.push(CA.dependentCredit);
+  c.credits = credList.reduce((s, v) => s + pos(v - 6 * steps), 0);
+  c.mhst = CA.mhstRate * pos(c.ti - CA.mhstThr);
+  // CA AMT (rough): no standard deduction, no property tax deduction, add ISO spread
+  c.amti = agi + iso - (c.itemizing ? (mort + c.charity) : 0);
+  c.amtEx = pos(CA.amtEx[fs] - .25 * pos(c.amti - CA.amtPhase[fs]));
+  c.tmt = CA.amtRate * pos(c.amti - c.amtEx);
+  c.amt = pos(c.tmt - c.regTax);
+  c.incomeTax = pos(c.regTax - c.credits) + c.amt + c.mhst;
+  c.sdi = CA.sdiRate * wages;
+  c.total = c.incomeTax + c.sdi;
+
+  // ================= Federal =================
+  const f = {};
+  f.agi = agi;
+  // SALT
+  f.stateIncomeTax = c.incomeTax + c.sdi;
+  f.saltRaw = f.stateIncomeTax + prop;
+  f.saltCap = Math.max(FED.saltFloor[fs], FED.saltCap[fs] - .3 * pos(agi - FED.saltPhase[fs]));
+  f.salt = Math.min(f.saltRaw, f.saltCap);
+  // Charity (itemized)
+  f.charStock = Math.min(stock, FED.stockLimit * pos(agi));
+  f.charCash = Math.min(cash, pos(FED.cashLimit * pos(agi) - f.charStock));
+  f.charAllowed = f.charStock + f.charCash;
+  f.charCarry = cash + stock - f.charAllowed;
+  f.charFloor = Math.min(f.charAllowed, FED.charityFloorPct * pos(agi));
+  f.charity = f.charAllowed - f.charFloor;
+  f.itemPre = f.salt + mort + f.charity;
+  const thr37 = FED.brackets[fs][5][0];
+  f.itemRed = 2 / 37 * Math.min(f.itemPre, pos(agi - thr37));
+  f.item = f.itemPre - f.itemRed;
+  f.std = FED.std[fs];
+  f.nonItemChar = Math.min(cash, FED.nonItemCharity[fs]);
+  f.itemizing = f.item > f.std + f.nonItemChar;
+  f.ded = f.itemizing ? f.item : f.std + f.nonItemChar;
+  f.ti = pos(agi - f.ded);
+  f.pref = Math.min(f.ti, netCapGain + qd);
+  f.ordTI = f.ti - f.pref;
+  const [t0, t15] = FED.cg[fs];
+  f.ordTax = bracketTax(f.ordTI, FED.brackets[fs]);
+  f.cgTax = cgTax(f.ordTI, f.pref, t0, t15);
+  f.regTax = f.ordTax + f.cgTax;
+  // AMT
+  f.amti = agi + iso - (f.itemizing ? (f.itemPre - f.salt) : 0);
+  f.amtEx = pos(FED.amtEx[fs] - FED.amtPhaseRate * pos(f.amti - FED.amtPhase[fs]));
+  const amtBase = pos(f.amti - f.amtEx);
+  const prefA = Math.min(amtBase, netCapGain + qd), ordA = amtBase - prefA, r28 = FED.amt28[fs];
+  f.tmt = (ordA <= r28 ? .26 * ordA : .26 * r28 + .28 * (ordA - r28)) + cgTax(ordA, prefA, t0, t15);
+  f.amt = pos(f.tmt - f.regTax);
+  // Child tax credit (nonrefundable approx)
+  f.ctc = Math.min(pos(kids * FED.ctc - 50 * Math.ceil(pos(agi - FED.ctcPhase[fs]) / 1000)), f.regTax + f.amt);
+  f.incomeTax = f.regTax + f.amt - f.ctc;
+  // NIIT
+  f.nii = pos(capInAGI) + qd + pos(inp.nii || 0);
+  f.niit = FED.niitRate * Math.min(f.nii, pos(agi - FED.surtaxThr[fs]));
+  // FICA
+  f.ss = FED.ssRate * (Math.min(w1, FED.ssBase) + Math.min(w2, FED.ssBase));
+  f.med = FED.medRate * wages;
+  f.addlMed = FED.addlMedRate * pos(wages - FED.surtaxThr[fs]);
+  f.fica = f.ss + f.med + f.addlMed;
+  f.total = f.incomeTax + f.niit + f.fica;
+
+  const gross = ord + pos(st) + pos(lt) + qd;
+  return { fs, f, c, agi, gross, capCarry, netCapGain, wages, total: f.total + c.total };
+}
+
+// numerical marginal: +delta on a field
+function marginal(inp, mutate, delta = 1000) {
+  const a = calc(inp);
+  const i2 = { ...inp }; mutate(i2, delta);
+  const b = calc(i2);
+  const d = (x, y) => (y - x) / delta;
+  return {
+    fedIncome: d(a.f.incomeTax, b.f.incomeTax), niit: d(a.f.niit, b.f.niit), fica: d(a.f.fica, b.f.fica),
+    fed: d(a.f.total, b.f.total), ca: d(a.c.total, b.c.total), tot: d(a.total, b.total),
+  };
+}
+const MUT = {
+  ord: (i, d) => { i.ord = (i.ord || 0) + d; if (i.w1 != null || i.w2 != null) i.w1 = (i.w1 || 0) + d; },
+  lt: (i, d) => { i.lt = (i.lt || 0) + d; },
+  cash: (i, d) => { i.cash = (i.cash || 0) + d; },
+};
+if (typeof module !== 'undefined') module.exports = { calc, marginal, MUT, FED, CA };
+</script>
+
+<script>
+// ===================== UI =====================
+const $ = id => document.getElementById(id);
+const FIELDS = ['ord','lt','cash','stock','st','qd','nii','w1','w2','prop','mort','kids','iso','basis','fedPaid','caPaid'];
+const KEY = 'tax2026-estimator-v1';
+
+function parseAmt(s) {
+  s = (s || '').trim().toLowerCase().replace(/[,\s$]/g, '');
+  if (!s) return null;
+  let m = 1;
+  if (/[k]$/.test(s)) { m = 1e3; s = s.slice(0, -1); }
+  else if (/m$/.test(s)) { m = 1e6; s = s.slice(0, -1); }
+  else if (/(w|万)$/.test(s)) { m = 1e4; s = s.slice(0, -1); }
+  const v = parseFloat(s);
+  return isNaN(v) ? null : v * m;
+}
+const money = n => (n < 0 ? '−$' : '$') + Math.round(Math.abs(n)).toLocaleString('en-US');
+const pct = (n, d = 1) => (n * 100).toFixed(d) + '%';
+const sgnPct = n => (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n * 100).toFixed(1) + '%';
+
+function readInputs() {
+  const inp = { fs: $('fs').value };
+  for (const k of FIELDS) inp[k] = parseAmt($(k).value);
+  return inp;
+}
+function rows(tbl, data) {
+  $(tbl).innerHTML = data.map(r => {
+    if (r.head) return `<tr>${r.head.map(h => `<th>${h}</th>`).join('')}</tr>`;
+    return `<tr class="${r.cls || ''}">${r.cells.map((c, i) => `<td class="${r.dim && i ? 'dim' : ''}">${c}</td>`).join('')}</tr>`;
+  }).join('');
+}
+
+function render() {
+  const inp = readInputs();
+  $('w2wrap').style.display = inp.fs === 'mfj' ? '' : 'none';
+  try { localStorage.setItem(KEY, JSON.stringify({ fs: inp.fs, v: Object.fromEntries(FIELDS.map(k => [k, $(k).value])) })); } catch (e) {}
+
+  const r = calc(inp), f = r.f, c = r.c, fs = r.fs;
+
+  // ---- live donation limits (AGI-based; AGI doesn't depend on donations) ----
+  const agiP = pos(r.agi);
+  const lim = {
+    stock: { fed: FED.stockLimit * agiP, ca: CA.stockLimit * agiP },
+    cash:  { fed: pos(FED.cashLimit * agiP - f.charStock), ca: pos(CA.cashLimit * agiP - c.charStock) },
+  };
+  for (const k of ['cash', 'stock']) {
+    const v = pos(inp[k] || 0), L = lim[k];
+    const overFed = v - L.fed, overCa = v - L.ca, over = Math.max(overFed, overCa) > 0.5;
+    let s = `当年最多可抵：联邦 <b>${money(L.fed)}</b> · 加州 <b>${money(L.ca)}</b>`;
+    if (over) s += `<br>超出部分当年不能抵扣（可结转 5 年）：` +
+      [overFed > 0.5 ? `联邦 ${money(overFed)}` : '', overCa > 0.5 ? `加州 ${money(overCa)}` : ''].filter(Boolean).join(' · ');
+    $(k + 'Lim').innerHTML = s;
+    $(k + 'Lim').classList.toggle('over', over);
+    $(k).classList.toggle('over', over);
+  }
+  const mOrd = marginal(inp, MUT.ord), mLt = marginal(inp, MUT.lt), mCash = marginal(inp, MUT.cash);
+
+  $('kFed').textContent = money(f.total);
+  $('kFedM').textContent = `边际：工资 ${pct(mOrd.fed)} · LTCG ${pct(mLt.fed)}`;
+  $('kCa').textContent = money(c.total);
+  $('kCaM').textContent = `边际：工资 ${pct(mOrd.ca)} · LTCG ${pct(mLt.ca)}`;
+  $('kTot').textContent = money(r.total);
+  $('kTotM').textContent = `边际：工资 ${pct(mOrd.tot)} · LTCG ${pct(mLt.tot)}`;
+  $('kEff').textContent = r.gross > 0 ? pct(r.total / r.gross) : '—';
+  $('kEffS').textContent = r.gross > 0
+    ? `联邦 ${pct(f.total / r.gross)} · 加州 ${pct(c.total / r.gross)} · 总收入 ${money(r.gross)}` : '';
+
+  rows('tMarg', [
+    { head: ['每多 $1,000 …', '联邦所得税', 'NIIT', 'FICA', '联邦合计', '加州', '总计'] },
+    ...[['W-2 工资', mOrd], ['长期资本利得 LTCG', mLt], ['现金捐赠', mCash]].map(([n, m]) => ({
+      cells: [n, sgnPct(m.fedIncome), sgnPct(m.niit), sgnPct(m.fica), sgnPct(m.fed), sgnPct(m.ca), `<b>${sgnPct(m.tot)}</b>`]
+    })),
+  ]);
+
+  const fedBr = bracketRate(f.ordTI, FED.brackets[fs]);
+  rows('tFed', [
+    { cells: ['AGI', money(f.agi)] },
+    { cells: [f.itemizing ? 'Itemized deductions' : 'Standard deduction' + (f.nonItemChar ? ' + 非 itemize 捐赠扣除' : ''), money(-f.ded)] },
+    ...(f.itemizing ? [
+      { cls: 'sub', cells: [`· SALT（上限 ${money(f.saltCap)}，原始 ${money(f.saltRaw)}）`, money(f.salt)] },
+      { cls: 'sub', cells: ['· 房贷利息', money(+(inp.mort || 0))] },
+      { cls: 'sub', cells: [`· 捐赠（已减 0.5% AGI floor ${money(f.charFloor)}）`, money(f.charity)] },
+      ...(f.itemRed > 0 ? [{ cls: 'sub', cells: ['· 37% 档 2/37 削减', money(-f.itemRed)] }] : []),
+    ] : [{ cls: 'sub', cells: [`· 若 itemize 可得`, money(f.item)] }]),
+    { cells: ['Taxable income', money(f.ti)] },
+    { cls: 'sub', cells: [`· 普通部分（${pct(fedBr.rate, 0)} 档）`, money(f.ordTI)] },
+    { cls: 'sub', cells: ['· LTCG / 合格股息部分', money(f.pref)] },
+    { cells: ['普通收入税', money(f.ordTax)] },
+    { cells: ['LTCG/QD 税', money(f.cgTax)] },
+    { cells: [`AMT（TMT ${money(f.tmt)}）`, money(f.amt)] },
+    ...(f.ctc ? [{ cells: ['子女税收抵免', money(-f.ctc)] }] : []),
+    { cells: ['<b>联邦所得税</b>', `<b>${money(f.incomeTax)}</b>`] },
+    { cells: [`NIIT 3.8%（NII ${money(f.nii)}）`, money(f.niit)] },
+    { cells: ['Social Security 6.2%', money(f.ss)] },
+    { cells: ['Medicare 1.45%', money(f.med)] },
+    { cells: ['Additional Medicare 0.9%', money(f.addlMed)] },
+    { cls: 'total', cells: ['联邦合计', money(f.total)] },
+    ...(inp.fedPaid != null ? [{ cells: ['所得税+NIIT+Add’l Med 还需补缴', money(f.incomeTax + f.niit + f.addlMed - inp.fedPaid)] }] : []),
+  ]);
+
+  const caBr = bracketRate(c.ti, CA.brackets[fs]);
+  rows('tCa', [
+    { cells: ['CA AGI', money(c.agi)] },
+    { cells: [c.itemizing ? 'Itemized deductions' : 'Standard deduction', money(-c.ded)] },
+    ...(c.itemizing ? [
+      { cls: 'sub', cells: ['· 房产税 + 房贷利息', money((inp.prop || 0) + (inp.mort || 0))] },
+      { cls: 'sub', cells: ['· 捐赠', money(c.charity)] },
+      ...(c.itemRed > 0 ? [{ cls: 'sub', cells: ['· 高收入 itemized 削减（6%）', money(-c.itemRed)] }] : []),
+    ] : [{ cls: 'sub', cells: ['· 若 itemize 可得', money(c.item)] }]),
+    { cells: [`Taxable income（${pct(caBr.rate)} 档）`, money(c.ti)] },
+    { cells: ['税率表税额', money(c.regTax)] },
+    { cells: ['豁免抵免 Exemption credits', money(-Math.min(c.credits, c.regTax))] },
+    { cells: ['Mental Health Services Tax 1%', money(c.mhst)] },
+    { cells: [`加州 AMT（TMT ${money(c.tmt)}）`, money(c.amt)] },
+    { cells: ['<b>加州所得税</b>', `<b>${money(c.incomeTax)}</b>`] },
+    { cells: ['SDI 1.3%', money(c.sdi)] },
+    { cls: 'total', cells: ['加州合计', money(c.total)] },
+    ...(inp.caPaid != null ? [{ cells: ['所得税还需补缴', money(c.incomeTax - inp.caPaid)] }] : []),
+  ]);
+
+  // ---- headroom ----
+  const [t0, t15] = FED.cg[fs];
+  const top = f.ordTI + f.pref;
+  const ltcgRate = top <= t0 ? '0%' : top <= t15 ? '15%' : '20%';
+  const ltcgRoom = top <= t0 ? t0 - top : top <= t15 ? t15 - top : null;
+  const H = [];
+  H.push({ head: ['门槛', '当前位置', '距门槛还差'] });
+  H.push({ cells: ['联邦普通收入档', `${pct(fedBr.rate, 0)} 档（Taxable 普通部分 ${money(f.ordTI)}）`, fedBr.hi === INF ? '已在最高档' : `${money(fedBr.hi - f.ordTI)} 进入 ${pct(bracketRate(fedBr.hi, FED.brackets[fs]).rate, 0)}`] });
+  H.push({ cells: ['联邦 LTCG 档', `${ltcgRate} 档（含 LTCG 后 ${money(top)}）`, ltcgRoom == null ? '已在 20% 档' : `再多 ${money(ltcgRoom)} 应税收入进入 ${ltcgRate === '0%' ? '15%' : '20%'}`] });
+  const niitThr = FED.surtaxThr[fs];
+  H.push({ cells: ['NIIT 3.8%（MAGI）', money(f.agi), f.agi < niitThr ? `${money(niitThr - f.agi)} 后开始征收` : '已触发'] });
+  const sp = FED.saltPhase[fs], spEnd = sp + (FED.saltCap[fs] - FED.saltFloor[fs]) / .3;
+  H.push({ cells: ['SALT cap 递减区（MAGI）', `${money(sp)} – ${money(spEnd)}`,
+    f.agi < sp ? `${money(sp - f.agi)} 后开始递减` : f.agi < spEnd ? '递减区内：额外 30%×边际税率 的隐性税' : '已降到下限'] });
+  const thr37 = FED.brackets[fs][5][0];
+  H.push({ cells: ['37% 档 / itemized 2/37 削减（AGI）', money(f.agi), f.agi < thr37 ? `${money(thr37 - f.agi)} 后触发` : '已触发：捐赠抵扣价值封顶 35%'] });
+  H.push({ cells: ['加州税率档', `${pct(caBr.rate)} 档（${money(c.ti)}）`, caBr.hi === INF ? '已在最高档' : `${money(caBr.hi - c.ti)} 进入 ${pct(bracketRate(caBr.hi, CA.brackets[fs]).rate)}`] });
+  H.push({ cells: ['加州 MHST 1%（应税收入 $1M）', money(c.ti), c.ti < CA.mhstThr ? `${money(CA.mhstThr - c.ti)} 后触发` : '已触发'] });
+  H.push({ cells: ['加州 itemized/抵免递减（AGI）', money(c.agi), c.agi < CA.phaseThr[fs] ? `${money(CA.phaseThr[fs] - c.agi)} 后开始` : '已触发'] });
+  rows('tHead', H);
+
+  // ---- messages ----
+  const M = [];
+  const warn = s => M.push(`<div class="msg warn">${s}</div>`), ok = s => M.push(`<div class="msg ok">${s}</div>`);
+  const totalDon = pos(inp.cash || 0) + pos(inp.stock || 0);
+  if (totalDon > 0) {
+    ok(`每多捐 $1,000 现金，约省税 ${money(-mCash.tot * 1000)}（联邦 ${money(-mCash.fed * 1000)}，加州 ${money(-mCash.ca * 1000)}），税后实际成本约 ${money(1000 + mCash.tot * 1000)}。`);
+    if (!f.itemizing) warn(`联邦未 itemize（itemized ${money(f.item)} < 标准扣除 ${money(f.std)}）：捐赠仅享受最多 ${money(FED.nonItemCharity[fs])} 的现金捐赠扣除。可考虑把多年捐赠集中在同一年（bunching，例如一次性捐入 DAF）。`);
+    if (f.itemizing && f.charFloor > 0) M.push(`<div class="msg">OBBBA 0.5% AGI floor：前 ${money(f.charFloor)} 捐赠在联邦不可扣除。</div>`);
+    if (f.itemRed > 0) warn(`处于联邦 37% 档：itemized 被削减 ${money(f.itemRed)}（2/37 规则），每 $1 抵扣价值约 35% 而非 37%。如明年收入较低，此影响也需权衡。`);
+    if (f.charCarry > 0) warn(`联邦捐赠超出 AGI 上限 ${money(f.charCarry)}，可结转未来 5 年。`);
+    if (c.charCarry > 0) warn(`加州捐赠超出 AGI 上限 ${money(c.charCarry)}，可结转未来 5 年。`);
+  }
+  if (pos(inp.stock || 0) > 0) {
+    const s = pos(inp.stock), basis = pos(inp.basis || 0);
+    const alt = calc({ ...inp, lt: (inp.lt || 0) + (s - basis), cash: (inp.cash || 0) + s, stock: 0 });
+    ok(`捐增值股票（市值 ${money(s)}，成本 ${money(basis)}）vs 先卖出再捐现金：直接捐股可少交约 ${money(alt.total - r.total)} 税（免掉增值部分的资本利得税${alt.total - r.total < 0 ? '，但此处因 30% AGI 上限更低，现金更优' : ''}）。`);
+  }
+  if (f.amt > 0) warn(`触发联邦 AMT ${money(f.amt)}：此时额外的 SALT/ISO 不再省税，边际税率按 AMT 计。`);
+  if (c.amt > 0) warn(`触发加州 AMT ${money(c.amt)}。`);
+  if (r.capCarry < 0) warn(`净资本损失超出 ${money(FED.capLossLimit[fs])} 年度抵扣上限，${money(-r.capCarry)} 结转至以后年度。`);
+  if ((inp.lt || 0) < 0 || (inp.st || 0) < 0) M.push(`<div class="msg">已按规则先互抵短/长期盈亏；加州同样只允许每年抵扣 ${money(FED.capLossLimit[fs])} 净损失。</div>`);
+  if (f.saltRaw > f.saltCap && f.itemizing) M.push(`<div class="msg">SALT 受上限限制：${money(f.saltRaw)} 中仅 ${money(f.saltCap)} 可扣除。</div>`);
+  if (!M.length) M.push('<div class="msg">输入捐赠金额后显示捐赠分析。</div>');
+  $('msgs').innerHTML = M.join('');
+}
+
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (s) { $('fs').value = s.fs; for (const k of FIELDS) $(k).value = s.v[k] || ''; if (FIELDS.slice(4).some(k => s.v[k])) $('adv').open = true; }
+  } catch (e) {}
+}
+$('example').onclick = () => {
+  const ex = { ord: '480k', lt: '120k', cash: '15k', stock: '30k', basis: '5k', prop: '18k', mort: '22k', w1: '300k', w2: '180k', kids: '2' };
+  $('fs').value = 'mfj';
+  for (const k of FIELDS) $(k).value = ex[k] || '';
+  $('adv').open = true; render();
+};
+$('clear').onclick = () => { for (const k of FIELDS) $(k).value = ''; render(); };
+document.querySelectorAll('input, select').forEach(e => e.addEventListener('input', render));
+load(); render();
+</script>
+</body>
+</html>
