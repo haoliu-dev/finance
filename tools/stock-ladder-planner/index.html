@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>个股阶梯投资规划</title>
+<style>
+  :root {
+    --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#6b7280; --line:#e5e7eb; --grid:#eef0f3;
+    --accent:#2563eb; --s1:#2a78d6; --s2:#eb6834; --good:#15803d; --bad:#dc2626;
+    --warn-bg:#fff7ed; --warn:#9a3412; --hl:#eff6ff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#111418; --card:#1a1a19; --text:#f0efec; --muted:#a3a29b; --line:#2d333b; --grid:#26292e;
+      --accent:#60a5fa; --s1:#3987e5; --s2:#d95926; --good:#4ade80; --bad:#f87171;
+      --warn-bg:#2a1d12; --warn:#fdba74; --hl:#172033; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text);
+    font:14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", sans-serif; }
+  header { padding:16px 24px 4px; }
+  header h1 { margin:0; font-size:20px; }
+  header p { margin:4px 0 0; color:var(--muted); font-size:12px; }
+  header a { color:var(--accent); }
+  main { display:grid; grid-template-columns:340px 1fr; gap:16px; padding:16px 24px 32px; align-items:start; }
+  @media (max-width:960px) { main { grid-template-columns:1fr; } }
+  main > section { min-width:0; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  .card h2 { font-size:14px; margin:0 0 10px; }
+  .inputs { position:sticky; top:12px; }
+  label.f { display:block; margin-bottom:10px; }
+  label.f > span { display:block; font-size:12px; color:var(--muted); margin-bottom:3px; }
+  label.f > span b { color:var(--text); font-weight:600; }
+  input[type=text], select { width:100%; padding:7px 9px; border:1px solid var(--line); border-radius:6px;
+    background:var(--bg); color:var(--text); font-size:14px; font-variant-numeric:tabular-nums; }
+  input:focus, select:focus { outline:2px solid var(--accent); outline-offset:-1px; }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .chk { display:flex; gap:6px; align-items:center; font-size:13px; margin-bottom:10px; }
+  details { border-top:1px dashed var(--line); padding-top:8px; margin-top:4px; }
+  summary { cursor:pointer; font-size:13px; color:var(--accent); margin-bottom:8px; }
+  .hint { font-size:11px; color:var(--muted); }
+  button { border:1px solid var(--line); background:var(--bg); color:var(--text); border-radius:6px; padding:5px 10px; cursor:pointer; font-size:12px; }
+  button:hover { border-color:var(--accent); }
+  .btns { display:flex; gap:8px; margin-top:8px; }
+  .kpis { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-bottom:16px; }
+  @media (max-width:1200px) { .kpis { grid-template-columns:repeat(2, 1fr); } }
+  .kpi .lbl { font-size:12px; color:var(--muted); }
+  .kpi .val { font-size:22px; font-weight:650; font-variant-numeric:tabular-nums; margin:2px 0; }
+  .kpi .sub { font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+  @media (max-width:1200px) { .grid2 { grid-template-columns:1fr; } }
+  .tw { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+  td, th { padding:4px 6px; border-bottom:1px solid var(--line); text-align:right; font-size:13px; white-space:nowrap; }
+  th { color:var(--muted); font-weight:500; font-size:12px; position:sticky; top:0; background:var(--card); }
+  td:first-child, th:first-child { text-align:left; }
+  tr.trig td { font-weight:600; }
+  tr.cur td { background:var(--hl); }
+  .neg { color:var(--bad); } .pos { color:var(--good); } .mut { color:var(--muted); }
+  td input { width:64px; padding:3px 5px; font-size:12px; text-align:right; }
+  .msg { padding:7px 10px; border-radius:6px; margin:6px 0; font-size:13px; background:var(--bg); }
+  .msg.warn { background:var(--warn-bg); color:var(--warn); }
+  .mt { margin-top:16px; }
+  .scroll { max-height:520px; overflow:auto; }
+  /* charts */
+  .chart { position:relative; }
+  .chart svg { width:100%; height:auto; display:block; }
+  .chart .axis text { fill:var(--muted); font-size:11px; }
+  .chart .gridline { stroke:var(--grid); stroke-width:1; }
+  .chart .baseline { stroke:var(--line); stroke-width:1; }
+  .legend { display:flex; gap:14px; font-size:12px; color:var(--muted); margin-bottom:6px; }
+  .legend i { display:inline-block; width:14px; height:2px; vertical-align:middle; margin-right:5px; border-radius:1px; }
+  .tip { position:absolute; pointer-events:none; background:var(--card); border:1px solid var(--line); border-radius:6px;
+    padding:6px 8px; font-size:12px; box-shadow:0 4px 14px rgba(0,0,0,.12); display:none; white-space:nowrap;
+    font-variant-numeric:tabular-nums; z-index:2; }
+  .tip b { font-weight:600; }
+  .tip .sw { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; }
+  footer { color:var(--muted); font-size:11px; padding:0 24px 24px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>个股阶梯投资规划</h1>
+  <p><a href="../../index.html">← 工具列表</a> · 股价每下跌一定比例就加仓一轮，看不同跌幅下的总投入、股数、平均成本和盈亏。金额可输入 <code>10k</code>、<code>1.5m</code>、<code>5w</code>（万）。</p>
+</header>
+
+<main>
+  <section class="card inputs">
+    <h2>输入</h2>
+    <label class="f"><span><b>股票</b>（可选，仅作标记）</span><input type="text" id="sym" placeholder="例如 NVDA"></label>
+    <div class="row2">
+      <label class="f"><span><b>当前持股数</b>（第 1 轮）</span><input type="text" id="n1" placeholder="例如 100"></label>
+      <label class="f"><span><b>平均成本</b>（$/股）</span><input type="text" id="c1" placeholder="例如 150"></label>
+    </div>
+    <label class="f"><span>当前股价（可选，默认=平均成本）</span><input type="text" id="px" placeholder="默认=平均成本"></label>
+    <div class="row2">
+      <label class="f"><span><b>每跌多少 % 加仓</b></span><input type="text" id="d" value="10"></label>
+      <label class="f"><span><b>加仓股数 = 上轮的 %</b></span><input type="text" id="m" value="100"></label>
+    </div>
+    <div class="row2">
+      <label class="f"><span>跌幅基准</span>
+        <select id="mode">
+          <option value="prev" selected>相对上一轮买入价</option>
+          <option value="base">相对第一轮成本</option>
+        </select></label>
+      <label class="f"><span>最多轮数（含第 1 轮）</span><input type="text" id="K" value="6"></label>
+    </div>
+    <label class="chk"><input type="checkbox" id="rnd" checked> 股数取整</label>
+
+    <details id="adv">
+      <summary>预算 / 情景设置</summary>
+      <label class="f"><span>可用于加仓的现金预算</span><input type="text" id="budget" placeholder="不限"></label>
+      <label class="f"><span>总资产（用于计算仓位占比）</span><input type="text" id="nav" placeholder="可选"></label>
+      <div class="row2">
+        <label class="f"><span>情景最大跌幅 %</span><input type="text" id="maxDrop" value="80"></label>
+        <label class="f"><span>情景步长 %</span><input type="text" id="step" value="5"></label>
+      </div>
+    </details>
+    <div class="btns">
+      <button id="example">填入示例</button>
+      <button id="resetOv">清除逐轮覆盖</button>
+      <button id="clear">清空</button>
+    </div>
+    <div class="hint" style="margin-top:8px">各轮的跌幅/加仓比例可以在“各轮明细”表中单独修改，留空则用统一参数。输入仅保存在本浏览器。</div>
+  </section>
+
+  <section>
+    <div class="kpis">
+      <div class="card kpi"><div class="lbl">全部轮次总投入</div><div class="val" id="kInv">—</div><div class="sub" id="kInvS"></div></div>
+      <div class="card kpi"><div class="lbl">最终平均成本</div><div class="val" id="kAvg">—</div><div class="sub" id="kAvgS"></div></div>
+      <div class="card kpi"><div class="lbl">最低触发价时浮亏</div><div class="val" id="kLoss">—</div><div class="sub" id="kLossS"></div></div>
+      <div class="card kpi"><div class="lbl">当前状态</div><div class="val" id="kNow">—</div><div class="sub" id="kNowS"></div></div>
+    </div>
+
+    <div class="card">
+      <h2>各轮明细</h2>
+      <div class="tw"><table id="tRounds"></table></div>
+    </div>
+
+    <div class="grid2 mt">
+      <div class="card">
+        <h2>平均成本 vs 股价（随跌幅）</h2>
+        <div class="legend"><span><i style="background:var(--s1)"></i>平均成本</span><span><i style="background:var(--s2)"></i>股价</span></div>
+        <div class="chart" id="ch1"></div>
+        <div class="hint">两线之间的距离 = 每股浮亏；平均成本低于股价即盈利。</div>
+      </div>
+      <div class="card">
+        <h2>累计投入（随跌幅）</h2>
+        <div class="legend"><span><i style="background:var(--s1)"></i>累计投入</span></div>
+        <div class="chart" id="ch2"></div>
+        <div class="hint">每一级台阶 = 一次加仓。</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>决策提示</h2>
+      <div id="msgs"></div>
+    </div>
+
+    <div class="card mt">
+      <h2>情景：股价跌到不同位置时</h2>
+      <div class="tw scroll"><table id="tScen"></table></div>
+      <div class="hint" style="margin-top:6px">粗体行 = 恰好在某一轮触发价；高亮行 = 最接近当前股价。“不加仓”列为只持有第 1 轮的对比。</div>
+    </div>
+  </section>
+</main>
+<footer>假设每轮在触发价成交，不计手续费与税。仅供个人规划参考，不构成投资建议。</footer>
+
+<script id="engine">
+// ============ engine (pure) ============
+// p: { n1, c1, d, m, K, mode:'prev'|'base', round:bool, ov: {k:{d,m}} }  (d, m as fractions)
+function plan(p) {
+  const R = [];
+  if (!(p.n1 > 0 && p.c1 > 0)) return R;
+  R.push({ k: 1, price: p.c1, shares: p.n1, drop: 0 });
+  let cumDrop = 0;
+  for (let k = 2; k <= p.K; k++) {
+    const o = (p.ov && p.ov[k]) || {};
+    const d = o.d != null ? o.d : p.d, m = o.m != null ? o.m : p.m;
+    const prev = R[R.length - 1];
+    let price;
+    if (p.mode === 'base') { cumDrop += d; price = p.c1 * (1 - cumDrop); }
+    else price = prev.price * (1 - d);
+    if (!(price > 0)) break;
+    let shares = prev.shares * m;
+    if (p.round) shares = Math.round(shares);
+    R.push({ k, price, shares, drop: 1 - price / p.c1, d, m });
+  }
+  let cs = 0, ci = 0;
+  for (const r of R) {
+    r.amt = r.shares * r.price;
+    const prevAvg = cs > 0 ? ci / cs : null;
+    cs += r.shares; ci += r.amt;
+    r.cumShares = cs; r.cumInv = ci; r.avg = ci / cs;
+    r.avgDrop = prevAvg ? 1 - r.avg / prevAvg : 0;
+    r.pl = cs * r.price - ci;                       // unrealized P/L right after buying at trigger
+    r.rebound = r.avg / r.price - 1;                 // rise needed from trigger price to break even
+  }
+  return R;
+}
+// position if price is P (all rounds with trigger >= P executed; round 1 always held)
+function at(R, P) {
+  let shares = 0, inv = 0, n = 0;
+  for (const r of R) if (r.k === 1 || r.price >= P - 1e-9) { shares += r.shares; inv += r.amt; n = r.k; }
+  const value = shares * P, avg = shares ? inv / shares : 0;
+  return { rounds: n, shares, inv, avg, value, pl: value - inv, plPct: inv ? (value - inv) / inv : 0, rebound: P > 0 ? avg / P - 1 : Infinity };
+}
+if (typeof module !== 'undefined') module.exports = { plan, at };
+</script>
+
+<script>
+const $ = id => document.getElementById(id);
+const FIELDS = ['sym','n1','c1','px','d','m','K','budget','nav','maxDrop','step'];
+const KEY = 'stock-ladder-planner-v1';
+let OV = {};   // per-round overrides: {k: {d: '12', m: '150'}} raw strings (percent)
+
+function num(s) {
+  s = String(s ?? '').trim().toLowerCase().replace(/[,\s$%]/g, '');
+  if (!s) return null;
+  let mul = 1;
+  if (s.endsWith('k')) { mul = 1e3; s = s.slice(0, -1); }
+  else if (s.endsWith('m')) { mul = 1e6; s = s.slice(0, -1); }
+  else if (s.endsWith('w') || s.endsWith('万')) { mul = 1e4; s = s.slice(0, -1); }
+  const v = parseFloat(s);
+  return isNaN(v) ? null : v * mul;
+}
+const money = (n, dp = 0) => (n < 0 ? '−$' : '$') + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp });
+const px = n => money(n, 2);
+const pct = (n, dp = 1) => (n * 100).toFixed(dp) + '%';
+const spct = (n, dp = 1) => (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n * 100).toFixed(dp) + '%';
+const shr = n => (Math.round(n * 100) / 100).toLocaleString('en-US');
+const cls = n => n < -1e-9 ? 'neg' : n > 1e-9 ? 'pos' : '';
+
+function params() {
+  const ov = {};
+  for (const [k, o] of Object.entries(OV)) {
+    const d = num(o.d), m = num(o.m);
+    if (d != null || m != null) ov[k] = { d: d != null ? d / 100 : null, m: m != null ? m / 100 : null };
+  }
+  return {
+    n1: num($('n1').value), c1: num($('c1').value),
+    d: (num($('d').value) ?? 10) / 100, m: (num($('m').value) ?? 100) / 100,
+    K: Math.max(1, Math.min(30, Math.floor(num($('K').value) ?? 6))),
+    mode: $('mode').value, round: $('rnd').checked, ov,
+  };
+}
+
+function save() {
+  try {
+    localStorage.setItem(KEY, JSON.stringify({ v: Object.fromEntries(FIELDS.map(k => [k, $(k).value])), mode: $('mode').value, rnd: $('rnd').checked, OV }));
+  } catch (e) {}
+}
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (!s) return;
+    for (const k of FIELDS) if (s.v[k] != null) $(k).value = s.v[k];
+    $('mode').value = s.mode || 'prev'; $('rnd').checked = s.rnd !== false; OV = s.OV || {};
+  } catch (e) {}
+}
+
+// ============ render ============
+let CUR_R = [], CUR_C1 = 0;   // latest plan, used by chart tooltips
+function render() {
+  save();
+  const p = params();
+  const R = plan(p);
+  CUR_R = R; CUR_C1 = p.c1;
+  const empty = !R.length;
+  if (empty) {
+    for (const id of ['kInv','kAvg','kLoss','kNow']) $(id).textContent = '—';
+    for (const id of ['kInvS','kAvgS','kLossS','kNowS']) $(id).textContent = '';
+    $('tRounds').innerHTML = '<tr><td class="mut">请输入持股数和平均成本。</td></tr>';
+    $('tScen').innerHTML = ''; $('ch1').innerHTML = ''; $('ch2').innerHTML = ''; $('msgs').innerHTML = '';
+    return;
+  }
+  const P0 = num($('px').value) ?? p.c1;
+  const last = R[R.length - 1], first = R[0];
+  const newMoney = last.cumInv - first.amt;
+  const budget = num($('budget').value), nav = num($('nav').value);
+  const sym = $('sym').value.trim();
+
+  // affordable rounds under budget
+  let affordK = R.length, spent = 0;
+  if (budget != null) {
+    affordK = 1;
+    for (const r of R.slice(1)) { if (spent + r.amt <= budget + 1e-6) { spent += r.amt; affordK = r.k; } else break; }
+  }
+  const now = at(R, P0);
+  const curRoundIdx = R.filter(r => r.k === 1 || r.price >= P0 - 1e-9).length;
+
+  // ---- KPIs ----
+  $('kInv').textContent = money(last.cumInv);
+  $('kInvS').textContent = `新增资金 ${money(newMoney)} · ${R.length} 轮 · ${shr(last.cumShares)} 股`;
+  $('kAvg').textContent = px(last.avg);
+  $('kAvgS').textContent = `较第 1 轮成本 ${spct(last.avg / p.c1 - 1)} · 最低触发价 ${px(last.price)}（跌 ${pct(last.drop)}）`;
+  $('kLoss').textContent = money(last.pl);
+  $('kLoss').className = 'val ' + cls(last.pl);
+  $('kLossS').textContent = `${spct(last.pl / last.cumInv)} · 回本需反弹 ${pct(last.rebound)}`;
+  $('kNow').textContent = `${sym ? sym + ' ' : ''}${px(P0)}`;
+  $('kNowS').innerHTML = `应已执行 ${curRoundIdx} 轮 · 浮盈亏 <span class="${cls(now.pl)}">${money(now.pl)}（${spct(now.plPct)}）</span>`;
+
+  // ---- rounds table (keep focus while editing overrides) ----
+  const head = ['轮次', '跌幅 %', '加仓 %', '触发价', '较第1轮', '本轮股数', '本轮金额', '累计股数', '累计投入', '平均成本', '均价下降', '触发时浮亏', '回本需反弹', '状态'];
+  const rowsHtml = R.map(r => {
+    const inBudget = r.k <= affordK;
+    const st = r.k === 1 ? '持有' : (r.price >= P0 - 1e-9 ? '应已触发' : `差 ${pct(1 - r.price / P0)}`);
+    const ovIn = (field, def) => r.k === 1 ? '<span class="mut">—</span>'
+      : `<input type="text" data-k="${r.k}" data-f="${field}" value="${(OV[r.k] && OV[r.k][field]) || ''}" placeholder="${def}">`;
+    return `<tr${inBudget ? '' : ' class="mut"'}>
+      <td>${r.k}${inBudget ? '' : ' <span class="neg" title="超出预算">✕</span>'}</td>
+      <td>${ovIn('d', +(p.d * 100).toFixed(2))}</td><td>${ovIn('m', +(p.m * 100).toFixed(2))}</td>
+      <td>${px(r.price)}</td><td>${r.k === 1 ? '—' : '−' + pct(r.drop)}</td>
+      <td>${shr(r.shares)}</td><td>${money(r.amt)}</td><td>${shr(r.cumShares)}</td><td>${money(r.cumInv)}</td>
+      <td><b>${px(r.avg)}</b></td><td>${r.k === 1 ? '—' : '−' + pct(r.avgDrop)}</td>
+      <td class="${cls(r.pl)}">${r.k === 1 ? '—' : money(r.pl) + '（' + spct(r.pl / r.cumInv) + '）'}</td>
+      <td>${r.k === 1 ? '—' : pct(r.rebound)}</td><td class="mut">${st}</td></tr>`;
+  }).join('');
+  $('tRounds').innerHTML = `<tr>${head.map(h => `<th>${h}</th>`).join('')}</tr>` + rowsHtml;
+  $('tRounds').querySelectorAll('input').forEach(inp => {
+    inp.addEventListener('input', e => {
+      const k = e.target.dataset.k, f = e.target.dataset.f;
+      OV[k] = OV[k] || {}; OV[k][f] = e.target.value;
+      const pos = e.target.selectionStart;
+      render();
+      const el = $('tRounds').querySelector(`input[data-k="${k}"][data-f="${f}"]`);
+      if (el) { el.focus(); el.setSelectionRange(pos, pos); }
+    });
+  });
+
+  // ---- scenario rows ----
+  const maxDrop = Math.min(0.99, (num($('maxDrop').value) ?? 80) / 100);
+  const step = Math.max(0.005, (num($('step').value) ?? 5) / 100);
+  const pts = new Map();
+  for (let x = 0; x <= maxDrop + 1e-9; x += step) pts.set((+x.toFixed(6)), null);
+  for (const r of R.slice(1)) if (r.drop <= maxDrop + 1e-9) pts.set(+r.drop.toFixed(6), r.k);
+  const drops = [...pts.keys()].sort((a, b) => a - b);
+  const curDrop = 1 - P0 / p.c1;
+  let curIdx = 0, best = Infinity;
+  drops.forEach((x, i) => { const dd = Math.abs(x - curDrop); if (dd < best) { best = dd; curIdx = i; } });
+  const scen = drops.map(x => {
+    const P = p.c1 * (1 - x), s = at(R, P);
+    const noLadderPL = first.shares * P - first.amt;
+    return { x, P, s, trig: pts.get(x), noLadderPL, noLadderRebound: p.c1 / P - 1 };
+  });
+  $('tScen').innerHTML = `<tr><th>较第1轮跌幅</th><th>股价</th><th>已执行轮数</th><th>总股数</th><th>总投入</th><th>平均成本</th><th>市值</th><th>浮盈亏</th><th>回本需反弹</th><th>不加仓浮亏</th><th>不加仓回本需反弹</th></tr>` +
+    scen.map((o, i) => `<tr class="${o.trig ? 'trig' : ''} ${i === curIdx && $('px').value ? 'cur' : ''}">
+      <td>${o.x === 0 ? '0%' : '−' + pct(o.x)}${o.trig ? ` · 第${o.trig}轮` : ''}</td><td>${px(o.P)}</td><td>${o.s.rounds}</td>
+      <td>${shr(o.s.shares)}</td><td>${money(o.s.inv)}</td><td>${px(o.s.avg)}</td><td>${money(o.s.value)}</td>
+      <td class="${cls(o.s.pl)}">${money(o.s.pl)}（${spct(o.s.plPct)}）</td><td>${o.s.rebound > 0 ? pct(o.s.rebound) : '已盈利'}</td>
+      <td class="${cls(o.noLadderPL)}">${money(o.noLadderPL)}</td><td class="mut">${o.noLadderRebound > 0 ? pct(o.noLadderRebound) : '—'}</td></tr>`).join('');
+
+  // ---- charts ----
+  const curve = [];
+  const N = 160;
+  for (let i = 0; i <= N; i++) {
+    const x = maxDrop * i / N, P = p.c1 * (1 - x);
+    curve.push({ x, P, ...at(R, P) });
+  }
+  // include exact trigger points so steps are crisp
+  for (const r of R.slice(1)) if (r.drop <= maxDrop) curve.push({ x: r.drop, P: r.price, ...at(R, r.price) });
+  curve.sort((a, b) => a.x - b.x);
+  lineChart('ch1', curve, {
+    series: [{ key: 'avg', color: 'var(--s1)', label: '平均成本' }, { key: 'P', color: 'var(--s2)', label: '股价' }],
+    yFmt: v => '$' + fmtShort(v), marks: R.slice(1).filter(r => r.drop <= maxDrop).map(r => ({ x: r.drop, y: r.avg })),
+    tip: o => `<b>跌 ${pct(o.x)} · 股价 ${px(o.P)}</b><br><span class="sw" style="background:var(--s1)"></span>平均成本 ${px(o.avg)}<br><span class="sw" style="background:var(--s2)"></span>股价 ${px(o.P)}<br>已执行 ${o.rounds} 轮 · ${shr(o.shares)} 股<br>浮盈亏 <span class="${cls(o.pl)}">${money(o.pl)}（${spct(o.plPct)}）</span>`,
+  });
+  lineChart('ch2', curve, {
+    series: [{ key: 'inv', color: 'var(--s1)', label: '累计投入' }], yMin0: true,
+    yFmt: v => '$' + fmtShort(v), marks: R.slice(1).filter(r => r.drop <= maxDrop).map(r => ({ x: r.drop, y: r.cumInv })),
+    budgetLine: budget != null ? first.amt + budget : null,
+    tip: o => `<b>跌 ${pct(o.x)} · 股价 ${px(o.P)}</b><br>累计投入 ${money(o.inv)}<br>已执行 ${o.rounds} 轮 · 市值 ${money(o.value)}`,
+  });
+
+  // ---- messages ----
+  const M = [], warn = s => M.push(`<div class="msg warn">${s}</div>`), info = s => M.push(`<div class="msg">${s}</div>`);
+  const lastShare = newMoney > 0 ? last.amt / newMoney : 0;
+  info(`跑完全部 ${R.length} 轮需新增资金 <b>${money(newMoney)}</b>，覆盖到股价 ${px(last.price)}（较第 1 轮成本跌 ${pct(last.drop)}）。最后一轮 ${money(last.amt)}，占新增资金 ${pct(lastShare)}。`);
+  const maxM = Math.max(0, ...R.slice(1).map(r => r.m));
+  if (maxM > 1) warn(`加仓比例最高 ${pct(maxM, 0)} > 100%：每轮股数递增（马丁格尔式），所需资金接近指数增长；越往后单轮金额越大，资金和心理压力都集中在最深的几轮。`);
+  if (R.length > 1) {
+    const drops = R.slice(1).map(r => r.avgDrop);
+    if (drops.length > 2 && drops[drops.length - 1] < drops[0] * 0.5) info(`后期轮次对平均成本的拉低效果在递减：第 2 轮让均价下降 ${pct(drops[0])}，最后一轮只下降 ${pct(drops[drops.length - 1])}。`);
+  }
+  const reb = at(R, p.c1 * (1 - maxDrop));
+  info(`若股价跌过最后一轮、到情景最大跌幅 ${pct(maxDrop, 0)}（${px(p.c1 * (1 - maxDrop))}）：浮亏 <span class="neg">${money(reb.pl)}（${spct(reb.plPct)}）</span>，回本需反弹 ${pct(reb.rebound)}。不加仓则浮亏 ${money(first.shares * p.c1 * (1 - maxDrop) - first.amt)}。`);
+  const back = last.cumShares * p.c1 - last.cumInv;
+  info(`若全部轮次执行后股价反弹回第 1 轮成本 ${px(p.c1)}：浮盈 <span class="pos">${money(back)}（${spct(back / last.cumInv)}）</span>；只要反弹到 ${px(last.avg)} 即回本（从最低触发价反弹 ${pct(last.rebound)}）。`);
+  if (budget != null) {
+    if (affordK < R.length) {
+      const r = R[affordK - 1];
+      warn(`预算 ${money(budget)} 只够执行到第 ${affordK} 轮（覆盖到 ${px(r.price)}，跌 ${pct(r.drop)}），之后 ${R.length - affordK} 轮还需 ${money(newMoney - spent)}，比预算多出 ${money(newMoney - budget)}。`);
+    } else info(`预算 ${money(budget)} 足够执行全部轮次，剩余 ${money(budget - newMoney)}。`);
+  }
+  if (nav != null && nav > 0) {
+    const w = (last.cumShares * last.price) / nav, w0 = first.amt / nav, wInv = last.cumInv / nav;
+    const s = `仓位占总资产：现在约 ${pct(w0)}（按成本）；全部执行后投入占 ${pct(wInv)}，按最低触发价市值占 ${pct(w)}。`;
+    wInv > 0.2 ? warn(s + ' 单只股票投入超过总资产 20%，集中度风险较高。') : info(s);
+  }
+  if (p.mode === 'prev') info(`当前跌幅基准为“相对上一轮”：每轮间距按百分比递减，第 ${R.length} 轮累计跌幅 ${pct(last.drop)}（而非 ${pct(p.d * (R.length - 1))}）。`);
+  $('msgs').innerHTML = M.join('');
+}
+
+function fmtShort(v) {
+  const a = Math.abs(v);
+  if (a >= 1e6) return (v / 1e6).toFixed(a >= 1e7 ? 0 : 1) + 'M';
+  if (a >= 1e3) return (v / 1e3).toFixed(a >= 1e4 ? 0 : 1) + 'k';
+  return Number.isInteger(+v.toFixed(6)) ? String(Math.round(v)) : v.toFixed(2);
+}
+function niceTicks(lo, hi, n = 5) {
+  const span = hi - lo || 1, raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const stepV = [1, 2, 2.5, 5, 10].map(s => s * mag).find(s => span / s <= n) || 10 * mag;
+  const t = []; for (let v = Math.ceil(lo / stepV) * stepV; v <= hi + 1e-9; v += stepV) t.push(+v.toFixed(10));
+  return t;
+}
+
+// generic x = drop (0..max), step-like series chart with crosshair tooltip
+function lineChart(id, data, o) {
+  const el = $(id), W = 560, H = 260, m = { l: 52, r: 14, t: 10, b: 28 };
+  const xMax = data[data.length - 1].x || 1;
+  let yLo = o.yMin0 ? 0 : Infinity, yHi = -Infinity;
+  for (const d of data) for (const s of o.series) { yLo = Math.min(yLo, d[s.key]); yHi = Math.max(yHi, d[s.key]); }
+  if (o.budgetLine != null) yHi = Math.max(yHi, o.budgetLine);
+  const yt = niceTicks(yLo, yHi); yLo = Math.min(yLo, yt[0]); yHi = Math.max(yHi, yt[yt.length - 1]);
+  const X = x => m.l + (x / xMax) * (W - m.l - m.r), Y = y => H - m.b - ((y - yLo) / (yHi - yLo || 1)) * (H - m.t - m.b);
+  const xt = niceTicks(0, xMax * 100, 6).map(v => v / 100);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${o.series.map(x => x.label).join('、')}随跌幅变化">`;
+  s += `<g class="axis">`;
+  for (const v of yt) s += `<line class="gridline" x1="${m.l}" x2="${W - m.r}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${m.l - 6}" y="${Y(v) + 4}" text-anchor="end">${o.yFmt(v)}</text>`;
+  for (const v of xt) s += `<text x="${X(v)}" y="${H - 8}" text-anchor="middle">${v === 0 ? '0%' : '−' + Math.round(v * 100) + '%'}</text>`;
+  s += `<line class="baseline" x1="${m.l}" x2="${W - m.r}" y1="${H - m.b}" y2="${H - m.b}"/></g>`;
+  if (o.budgetLine != null) s += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(o.budgetLine)}" y2="${Y(o.budgetLine)}" stroke="var(--muted)" stroke-dasharray="4 4"/><text x="${W - m.r}" y="${Y(o.budgetLine) - 5}" text-anchor="end" fill="var(--muted)" font-size="11">预算上限</text>`;
+  for (const se of o.series) {
+    // step: value holds until next point (trigger points included), so draw stepped for avg/inv
+    let dpath = '';
+    data.forEach((d, i) => {
+      const x = X(d.x), y = Y(d[se.key]);
+      if (i === 0) dpath += `M${x},${y}`;
+      else if (se.key === 'P') dpath += `L${x},${y}`;
+      else dpath += `H${x}V${y}`;
+    });
+    s += `<path d="${dpath}" fill="none" stroke="${se.color}" stroke-width="2" stroke-linejoin="round"/>`;
+  }
+  for (const mk of o.marks || []) s += `<circle cx="${X(mk.x)}" cy="${Y(mk.y)}" r="4" fill="${o.series[0].color}" stroke="var(--card)" stroke-width="2"/>`;
+  s += `<line id="${id}-x" y1="${m.t}" y2="${H - m.b}" stroke="var(--muted)" stroke-width="1" visibility="hidden"/>`;
+  s += `<rect x="${m.l}" y="${m.t}" width="${W - m.l - m.r}" height="${H - m.t - m.b}" fill="transparent" id="${id}-hit"/></svg><div class="tip" id="${id}-tip"></div>`;
+  el.innerHTML = s;
+  const svg = el.querySelector('svg'), hit = $(`${id}-hit`), xl = $(`${id}-x`), tip = $(`${id}-tip`);
+  const move = ev => {
+    const pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
+    const loc = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const x = Math.max(0, Math.min(xMax, (loc.x - m.l) / (W - m.l - m.r) * xMax));
+    let d = data[0]; for (const q of data) if (q.x <= x + 1e-9) d = q; else break;
+    xl.setAttribute('x1', X(x)); xl.setAttribute('x2', X(x)); xl.setAttribute('visibility', 'visible');
+    tip.innerHTML = o.tip({ ...d, ...at(CUR_R, (1 - x) * CUR_C1), x, P: (1 - x) * CUR_C1 });
+    const r = el.getBoundingClientRect(), tx = ev.clientX - r.left, tw = tip.offsetWidth;
+    tip.style.display = 'block';
+    tip.style.left = (tx + 14 + tw > r.width ? tx - tw - 14 : tx + 14) + 'px';
+    tip.style.top = Math.max(0, ev.clientY - r.top - 20) + 'px';
+  };
+  hit.addEventListener('pointermove', move);
+  hit.addEventListener('pointerleave', () => { tip.style.display = 'none'; xl.setAttribute('visibility', 'hidden'); });
+}
+
+$('example').onclick = () => {
+  const ex = { sym: 'DEMO', n1: '100', c1: '150', px: '128', d: '10', m: '120', K: '6', budget: '60k', nav: '500k', maxDrop: '70', step: '5' };
+  for (const k of FIELDS) $(k).value = ex[k] ?? '';
+  $('mode').value = 'prev'; $('rnd').checked = true; OV = {}; $('adv').open = true; render();
+};
+$('resetOv').onclick = () => { OV = {}; render(); };
+$('clear').onclick = () => { for (const k of FIELDS) $(k).value = ''; $('d').value = '10'; $('m').value = '100'; $('K').value = '6'; $('maxDrop').value = '80'; $('step').value = '5'; OV = {}; render(); };
+document.querySelectorAll('.inputs input, .inputs select').forEach(e => e.addEventListener('input', render));
+load(); render();
+</script>
+</body>
+</html>

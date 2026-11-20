@@ -52,6 +52,17 @@ const TOOLS = [
       <path d="M16 16.5v3.5"/>
     </svg>`,
   },
+  {
+    name: '个股阶梯投资规划',
+    href: 'tools/stock-ladder-planner/index.html',
+    desc: '股价每跌一定比例就按比例加仓，看各跌幅下的总投入、股数、平均成本和回本所需反弹。',
+    color: '#1baf7a',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 5h4v4h4v4h4v4h6"/>
+      <circle cx="7" cy="5" r="1.4"/><circle cx="11" cy="9" r="1.4"/><circle cx="15" cy="13" r="1.4"/><circle cx="19" cy="17" r="1.4"/>
+      <path d="M19 3v7M16.5 7.5 19 10l2.5-2.5"/>
+    </svg>`,
+  },
 ];
 
 document.getElementById('grid').innerHTML = TOOLS.map(t => `
