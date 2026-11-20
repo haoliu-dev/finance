@@ -42,6 +42,11 @@ jobs:
             case "$href" in http*|/*) continue ;; esac
             [ -f "_site/$href" ] || { echo "Missing: $href"; missing=1; }
           done
+          # every tool page must link back to the homepage
+          for f in tools/*/index.html; do
+            [ -e "$f" ] || continue
+            grep -q 'href="../../index.html"' "$f" || { echo "No back link to homepage: $f"; missing=1; }
+          done
           exit $missing
 
       - uses: actions/configure-pages@v5

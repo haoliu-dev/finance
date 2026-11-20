@@ -21,6 +21,20 @@
 
 命令行工具也要注册，`href` 指向它的 README 或需求文档。
 
+## 每个工具页面都要有返回主页的链接
+
+每个工具的 HTML 页面顶部（标题下方的说明行）都**必须**有一个返回工具列表的链接，用相对路径：
+
+```html
+<a href="../../index.html">← 工具列表</a>
+```
+
+CI（`.github/workflows/pages.yml`）会检查每个 `tools/*/index.html` 是否包含 `href="../../index.html"`，缺少时部署失败。
+
+## 发布
+
+推送到 `main` 后，GitHub Actions 会自动把主页和 `tools/` 下的 HTML 发布到 GitHub Pages：https://haoliu-dev.github.io/finance/ 。仓库是公开的，所以不要提交任何真实财务数据。
+
 ## 注意
 
 - 输入数据可能含敏感财务信息，不要提交、不要上传到外部服务。
