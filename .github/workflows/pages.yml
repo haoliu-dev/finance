@@ -1,0 +1,60 @@
+# Publish the tools homepage and every tool's HTML to GitHub Pages.
+# Only index.html, tools/**/*.html and tools/**/*.md are published (input/ and output/ are never included).
+name: Deploy tools to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Collect tool pages into _site
+        run: |
+          set -euo pipefail
+          mkdir -p _site
+          cp index.html _site/
+          # copy every tool's HTML (and README/requirements .md for CLI tools), keeping relative paths
+          find tools -type f \( -name '*.html' -o -name '*.md' \) -print0 | while IFS= read -r -d '' f; do
+            mkdir -p "_site/$(dirname "$f")"
+            cp "$f" "_site/$f"
+          done
+          echo "Published files:"; find _site -type f | sort
+
+      - name: Check homepage links resolve
+        run: |
+          set -euo pipefail
+          missing=0
+          for href in $(grep -oE "href: '[^']+'" index.html | sed -E "s/href: '([^']+)'/\1/"); do
+            case "$href" in http*|/*) continue ;; esac
+            [ -f "_site/$href" ] || { echo "Missing: $href"; missing=1; }
+          done
+          exit $missing
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
